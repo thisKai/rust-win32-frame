@@ -171,6 +171,25 @@ extern "system" fn subclass_procedure(
                             {
                                 return HitTest::Caption.l_result()
                             }
+                            ExtentHitTest::Extent(Border::TopLeft)
+                            | ExtentHitTest::Extent(Border::TopRight)
+                                if options.hit_test_extended_caption
+                                    && !options.hit_test_extended_resize_borders =>
+                            {
+                                return HitTest::Caption.l_result()
+                            }
+                            ExtentHitTest::Extent(Border::TopLeft)
+                                if options.hit_test_extended_caption
+                                    && options.hit_test_extended_resize_borders =>
+                            {
+                                return Border::Left.l_result();
+                            }
+                            ExtentHitTest::Extent(Border::TopRight)
+                                if options.hit_test_extended_caption
+                                    && options.hit_test_extended_resize_borders =>
+                            {
+                                return Border::Right.l_result();
+                            }
                             ExtentHitTest::Extent(border)
                                 if options.hit_test_extended_resize_borders =>
                             {

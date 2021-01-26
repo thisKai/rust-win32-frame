@@ -24,7 +24,7 @@ fn main() -> windows::Result<()> {
             },
             extend_client_area: Margins::default_caption(),
             hit_test_extended_caption: true,
-            ..Default::default()
+            hit_test_extended_resize_borders: false,
         })?;
 
     window.set_visible(true);

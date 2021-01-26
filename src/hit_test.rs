@@ -201,9 +201,9 @@ pub(crate) unsafe fn extent_hit_test(
     // Hit test (HTTOPLEFT, ... HTBOTTOMRIGHT)
     let hit_tests = [
         [
-            ExtentHitTest::Extent(Border::Left),
+            ExtentHitTest::Extent(Border::TopLeft),
             ExtentHitTest::Extent(Border::Top),
-            ExtentHitTest::Extent(Border::Right),
+            ExtentHitTest::Extent(Border::TopRight),
         ],
         [
             ExtentHitTest::Extent(Border::Left),
