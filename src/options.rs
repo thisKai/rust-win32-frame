@@ -7,6 +7,48 @@ pub struct Options {
     pub hit_test_extended_caption: bool,
     pub hit_test_extended_resize_borders: bool,
 }
+impl Options {
+    pub fn extended_caption(extra_height: i32) -> Self {
+        Self {
+            extend_frame: Margins::caption(extra_height),
+            extend_client_area: Margins::default(),
+            hit_test_extended_caption: true,
+            hit_test_extended_resize_borders: false,
+        }
+    }
+    pub fn custom_caption() -> Self {
+        Self {
+            extend_frame: Margins::default_caption(),
+            extend_client_area: Margins::default_caption(),
+            hit_test_extended_caption: true,
+            hit_test_extended_resize_borders: false,
+        }
+    }
+    pub fn extended_custom_caption(extra_height: i32) -> Self {
+        Self {
+            extend_frame: Margins::extended_caption(extra_height),
+            extend_client_area: Margins::default_caption(),
+            hit_test_extended_caption: true,
+            hit_test_extended_resize_borders: false,
+        }
+    }
+    pub fn custom_caption_height(caption_height: i32) -> Self {
+        Self {
+            extend_frame: Margins::caption(caption_height),
+            extend_client_area: Margins::default_caption(),
+            hit_test_extended_caption: true,
+            hit_test_extended_resize_borders: false,
+        }
+    }
+    pub fn remove_caption() -> Self {
+        Self {
+            extend_frame: Margins::default(),
+            extend_client_area: Margins::default_caption(),
+            hit_test_extended_caption: true,
+            hit_test_extended_resize_borders: false,
+        }
+    }
+}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Margins {
@@ -34,6 +76,13 @@ impl Margins {
         let frame_rect = unsafe { window_frame_borders(true) };
         Self {
             top: -frame_rect.top,
+            ..Default::default()
+        }
+    }
+    pub fn extended_caption(caption_height: i32) -> Self {
+        let frame_rect = unsafe { window_frame_borders(true) };
+        Self {
+            top: caption_height - frame_rect.top,
             ..Default::default()
         }
     }

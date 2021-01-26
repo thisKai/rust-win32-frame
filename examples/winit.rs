@@ -1,5 +1,5 @@
 use {
-    win32_frame::{Margins, Options, WithSubclass},
+    win32_frame::{Options, WithSubclass},
     winit::{
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
@@ -15,17 +15,7 @@ fn main() -> windows::Result<()> {
         .with_no_redirection_bitmap(true)
         .build(&event_loop)
         .unwrap()
-        .with_subclass(Options {
-            extend_frame: Margins {
-                left: 20,
-                top: 100,
-                right: 20,
-                bottom: 20,
-            },
-            extend_client_area: Margins::default_caption(),
-            hit_test_extended_caption: true,
-            hit_test_extended_resize_borders: false,
-        })?;
+        .with_subclass(Options::extended_caption(100))?;
 
     window.set_visible(true);
 
