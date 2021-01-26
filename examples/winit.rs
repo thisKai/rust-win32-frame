@@ -16,8 +16,15 @@ fn main() -> windows::Result<()> {
         .build(&event_loop)
         .unwrap()
         .with_subclass(Options {
-            extend_frame: Margins::default_caption(),
+            extend_frame: Margins {
+                left: 20,
+                top: 100,
+                right: 20,
+                bottom: 20,
+            },
             extend_client_area: Margins::default_caption(),
+            hit_test_extended_caption: true,
+            ..Default::default()
         })?;
 
     window.set_visible(true);

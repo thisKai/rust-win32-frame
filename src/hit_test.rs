@@ -7,54 +7,219 @@ use crate::{
         },
         windows_and_messaging::{GetWindowRect, HWND, LPARAM},
     },
-    window_frame_borders,
+    window_frame_borders, Options,
 };
 
-pub(crate) unsafe fn hit_test_nca(h_wnd: HWND, l_param: LPARAM) -> LRESULT {
+#[derive(Debug, Clone, Copy)]
+pub struct Point {
+    pub x: i32,
+    pub y: i32,
+}
+impl Point {
+    pub fn from_l_param(l_param: LPARAM) -> Self {
+        let (x, y) = get_l_param_point(l_param);
+        Self { x, y }
+    }
+}
+
+pub struct Size {
+    width: i32,
+    height: i32,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum HitTest {
+    Caption,
+    ResizeBorder(Border),
+    ClientArea(Point),
+}
+impl HitTest {
+    pub fn l_result(&self) -> LRESULT {
+        match self {
+            Self::Caption => LRESULT(HTCAPTION),
+            Self::ResizeBorder(border) => border.l_result(),
+            Self::ClientArea(_) => LRESULT(HTNOWHERE),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ExtentHitTest {
+    Extent(Border),
+    ClientArea(Point),
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(i32)]
+pub enum Border {
+    TopLeft = HTTOPLEFT,
+    Top = HTTOP,
+    TopRight = HTTOPRIGHT,
+    Left = HTLEFT,
+    Right = HTRIGHT,
+    BottomLeft = HTBOTTOMLEFT,
+    Bottom = HTBOTTOM,
+    BottomRight = HTBOTTOMRIGHT,
+}
+impl Border {
+    pub fn l_result(&self) -> LRESULT {
+        LRESULT(*self as i32)
+    }
+}
+
+pub struct WindowMetrics {
+    window: RECT,
+    frame: WindowFrameMetrics,
+}
+impl WindowMetrics {
+    pub unsafe fn new(h_wnd: HWND) -> Self {
+        // Get the window rectangle.
+        let mut rect = RECT::default();
+        GetWindowRect(h_wnd, &mut rect);
+        Self {
+            window: rect,
+            frame: WindowFrameMetrics::new(),
+        }
+    }
+}
+pub struct WindowFrameMetrics {
+    adjust_resize_borders: RECT,
+    adjust_caption: i32,
+}
+impl WindowFrameMetrics {
+    pub unsafe fn new() -> Self {
+        // Get the frame rectangle, adjusted for the style without a caption.
+        let frame_rect = window_frame_borders(false);
+
+        // Get the frame rectangle, adjusted for the style with a caption.
+        let caption_frame_rect = window_frame_borders(true);
+
+        Self {
+            adjust_resize_borders: frame_rect,
+            adjust_caption: caption_frame_rect.top,
+        }
+    }
+}
+
+pub(crate) unsafe fn default_hit_test(
+    point: Point,
+    metrics: &WindowMetrics,
+    options: &Options,
+) -> (HitTest, Size) {
     // Get the point coordinates for the hit test.
-    let (x, y) = get_l_param_point(l_param);
+    let Point { x, y } = point;
 
-    // Get the window rectangle.
-    let mut window_rect = RECT::default();
-    GetWindowRect(h_wnd, &mut window_rect);
-
-    // Get the frame rectangle, adjusted for the style without a caption.
-    let frame_rect = window_frame_borders(false);
-
-    // Get the frame rectangle, adjusted for the style with a caption.
-    let caption_frame_rect = window_frame_borders(true);
+    let WindowMetrics { window, frame } = metrics;
 
     // Determine if the hit test is for resizing. Default middle (1,1).
     let mut row = 1;
     let mut col = 1;
-    let mut on_resize_border = false;
+    let top_resize_border = y < window.top - frame.adjust_resize_borders.top;
 
+    let client_area_top = window.top - frame.adjust_caption - options.extend_client_area.top;
+    let client_area_bottom = window.bottom - frame.adjust_resize_borders.bottom;
     // Determine if the point is at the top or bottom of the window.
-    if y >= window_rect.top && y < window_rect.top - caption_frame_rect.top {
-        on_resize_border = y < (window_rect.top - frame_rect.top);
+    if top_resize_border || (y >= window.top && y < client_area_top) {
         row = 0;
-    } else if y < window_rect.bottom && y >= window_rect.bottom - caption_frame_rect.bottom {
+    } else if y < window.bottom && y >= client_area_bottom {
         row = 2;
     }
 
+    let client_area_left = window.left - frame.adjust_resize_borders.left;
+    let client_area_right = window.right - frame.adjust_resize_borders.right;
     // Determine if the point is at the left or right of the window.
-    if x >= window_rect.left && x < window_rect.left - caption_frame_rect.left {
+    if x >= window.left && x < client_area_left {
         col = 0; // left side
-    } else if x < window_rect.right && x >= window_rect.right - caption_frame_rect.right {
+    } else if x < window.right && x >= client_area_right {
         col = 2; // right side
     }
 
     // Hit test (HTTOPLEFT, ... HTBOTTOMRIGHT)
     let hit_tests = [
         [
-            HTTOPLEFT,
-            if on_resize_border { HTTOP } else { HTCAPTION },
-            HTTOPRIGHT,
+            HitTest::ResizeBorder(Border::TopLeft),
+            if top_resize_border {
+                HitTest::ResizeBorder(Border::Top)
+            } else {
+                HitTest::Caption
+            },
+            HitTest::ResizeBorder(Border::TopRight),
         ],
-        [HTLEFT, HTNOWHERE, HTRIGHT],
-        [HTBOTTOMLEFT, HTBOTTOM, HTBOTTOMRIGHT],
+        [
+            HitTest::ResizeBorder(Border::Left),
+            HitTest::ClientArea(Point {
+                x: x - client_area_left,
+                y: y - client_area_top,
+            }),
+            HitTest::ResizeBorder(Border::Right),
+        ],
+        [
+            HitTest::ResizeBorder(Border::BottomLeft),
+            HitTest::ResizeBorder(Border::Bottom),
+            HitTest::ResizeBorder(Border::BottomRight),
+        ],
     ];
-    LRESULT(hit_tests[row][col])
+    (
+        hit_tests[row][col],
+        Size {
+            width: client_area_right - client_area_left,
+            height: client_area_bottom - client_area_top,
+        },
+    )
+}
+
+pub(crate) unsafe fn extent_hit_test(
+    point: Point,
+    client_size: Size,
+    options: &Options,
+) -> ExtentHitTest {
+    // Get the point coordinates for the hit test.
+    let Point { x, y } = point;
+
+    // Determine if the hit test is for resizing. Default middle (1,1).
+    let mut row = 1;
+    let mut col = 1;
+
+    let client_area_top = options.extend_frame.top;
+    let client_area_bottom = client_size.height - options.extend_frame.bottom;
+    // Determine if the point is at the top or bottom of the window.
+    if y >= 0 && y < client_area_top {
+        row = 0;
+    } else if y < client_size.height && y >= client_area_bottom {
+        row = 2;
+    }
+
+    let client_area_left = options.extend_frame.left;
+    let client_area_right = client_size.width - options.extend_frame.right;
+    // Determine if the point is at the left or right of the window.
+    if x >= 0 && x < client_area_left {
+        col = 0; // left side
+    } else if x < client_size.width && x >= client_area_right {
+        col = 2; // right side
+    }
+
+    // Hit test (HTTOPLEFT, ... HTBOTTOMRIGHT)
+    let hit_tests = [
+        [
+            ExtentHitTest::Extent(Border::Left),
+            ExtentHitTest::Extent(Border::Top),
+            ExtentHitTest::Extent(Border::Right),
+        ],
+        [
+            ExtentHitTest::Extent(Border::Left),
+            ExtentHitTest::ClientArea(Point {
+                x: x - client_area_left,
+                y: y - client_area_top,
+            }),
+            ExtentHitTest::Extent(Border::Right),
+        ],
+        [
+            ExtentHitTest::Extent(Border::BottomLeft),
+            ExtentHitTest::Extent(Border::Bottom),
+            ExtentHitTest::Extent(Border::BottomRight),
+        ],
+    ];
+    hit_tests[row][col]
 }
 
 fn get_l_param_point(lp: LPARAM) -> (i32, i32) {

@@ -1,8 +1,11 @@
 use crate::{bindings::windows::win32::controls::MARGINS, window_frame_borders};
 
+#[derive(Debug, Default)]
 pub struct Options {
     pub extend_frame: Margins,
     pub extend_client_area: Margins,
+    pub hit_test_extended_caption: bool,
+    pub hit_test_extended_resize_borders: bool,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]

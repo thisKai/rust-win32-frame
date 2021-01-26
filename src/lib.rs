@@ -11,12 +11,14 @@ use {
         dwm::{DwmDefWindowProc, DwmExtendFrameIntoClientArea, DwmIsCompositionEnabled},
         shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass},
         system_services::{
-            FALSE, HTCAPTION, HTNOWHERE, LRESULT, TRUE, WM_ACTIVATE, WM_NCCALCSIZE, WM_NCHITTEST,
-            WS_CAPTION, WS_OVERLAPPEDWINDOW,
+            FALSE, LRESULT, TRUE, WM_ACTIVATE, WM_NCCALCSIZE, WM_NCHITTEST, WS_CAPTION,
+            WS_OVERLAPPEDWINDOW,
         },
         windows_and_messaging::{AdjustWindowRectEx, WINDOWPOS_abi, HWND, LPARAM, WPARAM},
     },
-    hit_test::hit_test_nca,
+    hit_test::{
+        default_hit_test, extent_hit_test, Border, ExtentHitTest, HitTest, Point, WindowMetrics,
+    },
     raw_window_handle::{HasRawWindowHandle, RawWindowHandle},
     std::ops::{Deref, DerefMut},
 };
@@ -139,7 +141,8 @@ extern "system" fn subclass_procedure(
             }
             if msg == WM_NCCALCSIZE && w_param == WPARAM(TRUE as _) {
                 let Options {
-                    extend_client_area: adjust_client_area, ..
+                    extend_client_area: adjust_client_area,
+                    ..
                 } = options;
 
                 // Calculate new NCCALCSIZE_PARAMS based on custom NCA inset.
@@ -151,12 +154,32 @@ extern "system" fn subclass_procedure(
                 pncsp.rgrc[0].bottom += adjust_client_area.bottom;
             }
             if msg == WM_NCHITTEST && dwm_result == LRESULT(0) {
-                let hit_test_result = hit_test_nca(h_wnd, l_param);
+                let point = Point::from_l_param(l_param);
 
-                if hit_test_result == LRESULT(HTNOWHERE) {
-                    return LRESULT(HTCAPTION);
+                let metrics = WindowMetrics::new(h_wnd);
+
+                let (default_hit_test, client_area_size) =
+                    default_hit_test(point, &metrics, options);
+
+                match default_hit_test {
+                    HitTest::ResizeBorder(border) => return border.l_result(),
+                    caption @ HitTest::Caption => return caption.l_result(),
+                    HitTest::ClientArea(point) => {
+                        match extent_hit_test(point, client_area_size, options) {
+                            ExtentHitTest::Extent(Border::Top)
+                                if options.hit_test_extended_caption =>
+                            {
+                                return HitTest::Caption.l_result()
+                            }
+                            ExtentHitTest::Extent(border)
+                                if options.hit_test_extended_resize_borders =>
+                            {
+                                return border.l_result()
+                            }
+                            _ => {}
+                        }
+                    }
                 }
-                return hit_test_result;
             }
 
             if dwm_handled {
