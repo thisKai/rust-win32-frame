@@ -2,10 +2,11 @@ mod bindings {
     ::windows::include_bindings!();
 }
 mod hit_test;
+mod options;
 
+pub use options::*;
 use {
     bindings::windows::win32::{
-        controls::MARGINS,
         display_devices::RECT,
         dwm::{DwmDefWindowProc, DwmExtendFrameIntoClientArea, DwmIsCompositionEnabled},
         shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass},
@@ -23,19 +24,29 @@ use {
 pub struct SubClassedWindow<W: HasRawWindowHandle> {
     id: usize,
     window: W,
+    _options: Box<Options>,
 }
 impl<W: HasRawWindowHandle> SubClassedWindow<W> {
-    pub fn wrap(window: W) -> windows::Result<Self> {
-        Self::wrap_with_id(window, 1)
+    pub fn wrap(window: W, options: Options) -> windows::Result<Self> {
+        Self::wrap_with_id(window, options, 1)
     }
-    pub fn wrap_with_id(window: W, subclass_id: usize) -> windows::Result<Self> {
+    pub fn wrap_with_id(window: W, options: Options, subclass_id: usize) -> windows::Result<Self> {
         let h_wnd = windows_window_handle(&window);
+        let options = Box::new(options);
+        let options_ptr = &*options as *const Options;
         unsafe {
-            SetWindowSubclass(h_wnd, Some(subclass_procedure), subclass_id, 0).ok()?;
+            SetWindowSubclass(
+                h_wnd,
+                Some(subclass_procedure),
+                subclass_id,
+                options_ptr as usize,
+            )
+            .ok()?;
         }
         Ok(Self {
             id: subclass_id,
             window,
+            _options: options,
         })
     }
     pub fn unwrap(self) -> windows::Result<W> {
@@ -69,11 +80,11 @@ impl<W: HasRawWindowHandle> DerefMut for SubClassedWindow<W> {
 }
 
 pub trait WithSubclass: HasRawWindowHandle + Sized {
-    fn with_subclass(self) -> windows::Result<SubClassedWindow<Self>>;
+    fn with_subclass(self, options: Options) -> windows::Result<SubClassedWindow<Self>>;
 }
 impl<W: HasRawWindowHandle> WithSubclass for W {
-    fn with_subclass(self) -> windows::Result<SubClassedWindow<Self>> {
-        SubClassedWindow::wrap(self)
+    fn with_subclass(self, options: Options) -> windows::Result<SubClassedWindow<Self>> {
+        SubClassedWindow::wrap(self, options)
     }
 }
 
@@ -83,10 +94,12 @@ extern "system" fn subclass_procedure(
     w_param: WPARAM,
     l_param: LPARAM,
     _u_id_subclass: usize,
-    _dw_ref_data: usize,
+    dw_ref_data: usize,
 ) -> LRESULT {
     unsafe {
         if is_dwm_enabled() {
+            let options = &*(dw_ref_data as *const Options);
+
             let msg = u_msg as i32;
 
             let (dwm_result, dwm_handled) = {
@@ -121,23 +134,21 @@ extern "system" fn subclass_procedure(
             // }
             if msg == WM_ACTIVATE {
                 // Extend the frame into the client area.
-                let p_mar_inset = MARGINS {
-                    cy_top_height: 1,
-                    ..Default::default()
-                };
+                let p_mar_inset = options.extend_frame.to_win32();
                 DwmExtendFrameIntoClientArea(h_wnd, &p_mar_inset);
             }
             if msg == WM_NCCALCSIZE && w_param == WPARAM(TRUE as _) {
-                let frame_rect = window_frame_borders(true);
-                let caption_height = -frame_rect.top;
+                let Options {
+                    adjust_client_area, ..
+                } = options;
 
                 // Calculate new NCCALCSIZE_PARAMS based on custom NCA inset.
                 let pncsp = &mut *(l_param.0 as *mut NCCALCSIZE_PARAMS);
 
-                pncsp.rgrc[0].left -= 0;
-                pncsp.rgrc[0].top -= caption_height;
-                pncsp.rgrc[0].right += 0;
-                pncsp.rgrc[0].bottom += 0;
+                pncsp.rgrc[0].left -= adjust_client_area.left;
+                pncsp.rgrc[0].top -= adjust_client_area.top;
+                pncsp.rgrc[0].right += adjust_client_area.right;
+                pncsp.rgrc[0].bottom += adjust_client_area.bottom;
             }
             if msg == WM_NCHITTEST && dwm_result == LRESULT(0) {
                 let hit_test_result = hit_test_nca(h_wnd, l_param);
