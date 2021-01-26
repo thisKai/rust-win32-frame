@@ -139,7 +139,7 @@ extern "system" fn subclass_procedure(
             }
             if msg == WM_NCCALCSIZE && w_param == WPARAM(TRUE as _) {
                 let Options {
-                    adjust_client_area, ..
+                    extend_client_area: adjust_client_area, ..
                 } = options;
 
                 // Calculate new NCCALCSIZE_PARAMS based on custom NCA inset.

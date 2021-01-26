@@ -2,7 +2,7 @@ use crate::{bindings::windows::win32::controls::MARGINS, window_frame_borders};
 
 pub struct Options {
     pub extend_frame: Margins,
-    pub adjust_client_area: Margins,
+    pub extend_client_area: Margins,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -21,13 +21,13 @@ impl Margins {
             bottom: -1,
         }
     }
-    pub fn extend_caption(caption_extent: i32) -> Self {
+    pub fn caption(caption_height: i32) -> Self {
         Self {
-            top: caption_extent,
+            top: caption_height,
             ..Default::default()
         }
     }
-    pub fn remove_caption() -> Self {
+    pub fn default_caption() -> Self {
         let frame_rect = unsafe { window_frame_borders(true) };
         Self {
             top: -frame_rect.top,

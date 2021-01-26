@@ -16,8 +16,8 @@ fn main() -> windows::Result<()> {
         .build(&event_loop)
         .unwrap()
         .with_subclass(Options {
-            extend_frame: Margins::extend_caption(1),
-            adjust_client_area: Margins::remove_caption(),
+            extend_frame: Margins::default_caption(),
+            extend_client_area: Margins::default_caption(),
         })?;
 
     window.set_visible(true);
