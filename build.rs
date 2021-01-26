@@ -22,6 +22,7 @@ fn main() {
         }
         windows::win32::shell::{
             SetWindowSubclass,
+            RemoveWindowSubclass,
             DefSubclassProc,
         }
         windows::win32::dwm::{

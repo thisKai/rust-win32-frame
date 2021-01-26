@@ -1,10 +1,10 @@
 use {
-    win32_frame::WindowSubclass,
+    win32_frame::WithSubclass,
     winit::{
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
-        window::WindowBuilder,
         platform::windows::WindowBuilderExtWindows,
+        window::WindowBuilder,
     },
 };
 fn main() -> windows::Result<()> {
@@ -14,11 +14,9 @@ fn main() -> windows::Result<()> {
         .with_visible(false)
         .with_no_redirection_bitmap(true)
         .build(&event_loop)
-        .unwrap();
+        .unwrap()
+        .with_subclass()?;
 
-    unsafe {
-        window.apply_subclass()?;
-    }
     window.set_visible(true);
 
     event_loop.run(move |event, _target, control_flow| match event {

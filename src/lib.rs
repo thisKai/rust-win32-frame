@@ -7,7 +7,7 @@ use {
         controls::MARGINS,
         display_devices::RECT,
         dwm::{DwmDefWindowProc, DwmExtendFrameIntoClientArea, DwmIsCompositionEnabled},
-        shell::{DefSubclassProc, SetWindowSubclass},
+        shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass},
         system_services::{
             FALSE, HTBOTTOM, HTBOTTOMLEFT, HTBOTTOMRIGHT, HTCAPTION, HTLEFT, HTNOWHERE, HTRIGHT,
             HTTOP, HTTOPLEFT, HTTOPRIGHT, LRESULT, SWP_FRAMECHANGED, TRUE, WM_ACTIVATE, WM_CREATE,
@@ -18,20 +18,63 @@ use {
         },
     },
     raw_window_handle::{HasRawWindowHandle, RawWindowHandle},
+    std::ops::{Deref, DerefMut},
 };
 
-pub trait WindowSubclass {
-    unsafe fn apply_subclass(&self) -> windows::Result<()>;
+pub struct SubClassedWindow<W: HasRawWindowHandle> {
+    id: usize,
+    window: W,
 }
-impl<W: HasRawWindowHandle> WindowSubclass for W {
-    unsafe fn apply_subclass(&self) -> windows::Result<()> {
-        // Get the window handle
-        let window_handle = self.raw_window_handle();
-        let window_handle = match window_handle {
-            RawWindowHandle::Windows(window_handle) => window_handle.hwnd,
-            _ => panic!("Unsupported platform!"),
-        };
-        SetWindowSubclass(HWND(window_handle as isize), Some(subclass_procedure), 1, 0).ok()
+impl<W: HasRawWindowHandle> SubClassedWindow<W> {
+    pub fn wrap(window: W) -> windows::Result<Self> {
+        Self::wrap_with_id(window, 1)
+    }
+    pub fn wrap_with_id(window: W, subclass_id: usize) -> windows::Result<Self> {
+        let h_wnd = windows_window_handle(&window);
+        unsafe {
+            SetWindowSubclass(h_wnd, Some(subclass_procedure), subclass_id, 0).ok()?;
+        }
+        Ok(Self {
+            id: subclass_id,
+            window,
+        })
+    }
+    pub fn unwrap(self) -> windows::Result<W> {
+        let h_wnd = windows_window_handle(&self.window);
+        unsafe {
+            RemoveWindowSubclass(h_wnd, Some(subclass_procedure), self.id).ok()?;
+        }
+        Ok(self.window)
+    }
+}
+fn windows_window_handle<W: HasRawWindowHandle>(window: &W) -> HWND {
+    // Get the window handle
+    let window_handle = window.raw_window_handle();
+    let window_handle = match window_handle {
+        RawWindowHandle::Windows(window_handle) => window_handle.hwnd,
+        _ => panic!("Unsupported platform!"),
+    };
+    HWND(window_handle as isize)
+}
+impl<W: HasRawWindowHandle> Deref for SubClassedWindow<W> {
+    type Target = W;
+
+    fn deref(&self) -> &Self::Target {
+        &self.window
+    }
+}
+impl<W: HasRawWindowHandle> DerefMut for SubClassedWindow<W> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.window
+    }
+}
+
+pub trait WithSubclass: HasRawWindowHandle + Sized {
+    fn with_subclass(self) -> windows::Result<SubClassedWindow<Self>>;
+}
+impl<W: HasRawWindowHandle> WithSubclass for W {
+    fn with_subclass(self) -> windows::Result<SubClassedWindow<Self>> {
+        SubClassedWindow::wrap(self)
     }
 }
 
