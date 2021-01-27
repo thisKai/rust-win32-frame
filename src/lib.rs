@@ -11,10 +11,12 @@ use {
         dwm::{DwmDefWindowProc, DwmExtendFrameIntoClientArea, DwmIsCompositionEnabled},
         shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass},
         system_services::{
-            FALSE, LRESULT, TRUE, WM_ACTIVATE, WM_NCCALCSIZE, WM_NCHITTEST, WS_CAPTION,
-            WS_OVERLAPPEDWINDOW,
+            FALSE, LRESULT, SWP_FRAMECHANGED, TRUE, WM_ACTIVATE, WM_NCCALCSIZE, WM_NCHITTEST,
+            WS_CAPTION, WS_OVERLAPPEDWINDOW,
         },
-        windows_and_messaging::{AdjustWindowRectEx, WINDOWPOS_abi, HWND, LPARAM, WPARAM},
+        windows_and_messaging::{
+            AdjustWindowRectEx, GetWindowRect, SetWindowPos, WINDOWPOS_abi, HWND, LPARAM, WPARAM,
+        },
     },
     hit_test::{
         default_hit_test, extent_hit_test, Border, ExtentHitTest, HitTest, Point, WindowMetrics,
@@ -26,7 +28,7 @@ use {
 pub struct SubClassedWindow<W: HasRawWindowHandle> {
     id: usize,
     window: W,
-    _options: Box<Options>,
+    options: Box<Options>,
 }
 impl<W: HasRawWindowHandle> SubClassedWindow<W> {
     pub fn wrap(window: W, options: Options) -> windows::Result<Self> {
@@ -48,7 +50,7 @@ impl<W: HasRawWindowHandle> SubClassedWindow<W> {
         Ok(Self {
             id: subclass_id,
             window,
-            _options: options,
+            options,
         })
     }
     pub fn unwrap(self) -> windows::Result<W> {
@@ -57,6 +59,12 @@ impl<W: HasRawWindowHandle> SubClassedWindow<W> {
             RemoveWindowSubclass(h_wnd, Some(subclass_procedure), self.id).ok()?;
         }
         Ok(self.window)
+    }
+    pub fn options_mut(&mut self) -> OptionsMut<W> {
+        OptionsMut {
+            window: &self.window,
+            options: &mut *self.options,
+        }
     }
 }
 fn windows_window_handle<W: HasRawWindowHandle>(window: &W) -> HWND {
@@ -78,6 +86,51 @@ impl<W: HasRawWindowHandle> Deref for SubClassedWindow<W> {
 impl<W: HasRawWindowHandle> DerefMut for SubClassedWindow<W> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.window
+    }
+}
+
+pub struct OptionsMut<'a, W: HasRawWindowHandle> {
+    window: &'a W,
+    options: &'a mut Options,
+}
+impl<'a, W: HasRawWindowHandle> Deref for OptionsMut<'a, W> {
+    type Target = Options;
+
+    fn deref(&self) -> &Self::Target {
+        self.options
+    }
+}
+impl<'a, W: HasRawWindowHandle> DerefMut for OptionsMut<'a, W> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.options
+    }
+}
+impl<'a, W: HasRawWindowHandle> Drop for OptionsMut<'a, W> {
+    fn drop(&mut self) {
+        let h_wnd = windows_window_handle(self.window);
+        let mut rect = RECT::default();
+        unsafe {
+            GetWindowRect(h_wnd, &mut rect);
+        }
+
+        // Inform application of the frame change.
+        let width = rect.right - rect.left;
+        let height = rect.bottom - rect.top;
+
+        let p_mar_inset = self.options.extend_frame.to_win32();
+
+        unsafe {
+            SetWindowPos(
+                h_wnd,
+                HWND(0),
+                rect.left,
+                rect.top,
+                width,
+                height,
+                SWP_FRAMECHANGED as _,
+            );
+            DwmExtendFrameIntoClientArea(h_wnd, &p_mar_inset);
+        }
     }
 }
 

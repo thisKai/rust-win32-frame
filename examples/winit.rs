@@ -1,3 +1,5 @@
+use winit::event::ElementState;
+
 use {
     win32_frame::{Options, WithSubclass},
     winit::{
@@ -10,12 +12,12 @@ use {
 fn main() -> windows::Result<()> {
     let event_loop = EventLoop::new();
 
-    let window = WindowBuilder::new()
+    let mut window = WindowBuilder::new()
         .with_visible(false)
         .with_no_redirection_bitmap(true)
         .build(&event_loop)
         .unwrap()
-        .with_subclass(Options::extended_caption(100))?;
+        .with_subclass(Options::custom_caption())?;
 
     window.set_visible(true);
 
@@ -24,6 +26,24 @@ fn main() -> windows::Result<()> {
             event: WindowEvent::CloseRequested,
             window_id,
         } if window_id == window.id() => *control_flow = ControlFlow::Exit,
+        Event::WindowEvent {
+            event: WindowEvent::KeyboardInput { input, .. },
+            window_id,
+        } if window_id == window.id() && input.state == ElementState::Pressed => {
+            if let Some(key) = input.virtual_keycode {
+                match key {
+                    winit::event::VirtualKeyCode::Down => {
+                        let mut options = window.options_mut();
+                        options.extend_frame.top += 1;
+                    }
+                    winit::event::VirtualKeyCode::Up => {
+                        let mut options = window.options_mut();
+                        options.extend_frame.top -= 1;
+                    }
+                    _ => {}
+                }
+            }
+        }
         _ => {}
     });
 }
