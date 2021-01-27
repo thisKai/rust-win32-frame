@@ -1,13 +1,13 @@
 use crate::{bindings::windows::win32::controls::MARGINS, window_frame_borders};
 
 #[derive(Debug, Default)]
-pub struct Options {
+pub struct WindowFrame {
     pub extend_frame: Margins,
     pub extend_client_area: Margins,
     pub hit_test_extended_caption: bool,
     pub hit_test_extended_resize_borders: bool,
 }
-impl Options {
+impl WindowFrame {
     pub fn extended_caption(extra_height: i32) -> Self {
         Self {
             extend_frame: Margins::caption(extra_height),

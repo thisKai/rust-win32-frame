@@ -7,7 +7,7 @@ use crate::{
         },
         windows_and_messaging::{GetWindowRect, HWND, LPARAM},
     },
-    window_frame_borders, Options,
+    window_frame_borders, WindowFrame,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -104,7 +104,7 @@ impl WindowFrameMetrics {
 pub(crate) unsafe fn default_hit_test(
     point: Point,
     metrics: &WindowMetrics,
-    options: &Options,
+    options: &WindowFrame,
 ) -> (HitTest, Size) {
     // Get the point coordinates for the hit test.
     let Point { x, y } = point;
@@ -171,7 +171,7 @@ pub(crate) unsafe fn default_hit_test(
 pub(crate) unsafe fn extent_hit_test(
     point: Point,
     client_size: Size,
-    options: &Options,
+    options: &WindowFrame,
 ) -> ExtentHitTest {
     // Get the point coordinates for the hit test.
     let Point { x, y } = point;

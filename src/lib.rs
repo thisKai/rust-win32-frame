@@ -25,23 +25,27 @@ use {
     std::ops::{Deref, DerefMut},
 };
 
-pub struct SubClassedWindow<W: HasRawWindowHandle> {
+pub struct CustomizedWindow<W: HasRawWindowHandle> {
     id: usize,
     window: W,
-    options: Box<Options>,
+    options: Box<WindowFrame>,
 }
-impl<W: HasRawWindowHandle> SubClassedWindow<W> {
-    pub fn wrap(window: W, options: Options) -> windows::Result<Self> {
+impl<W: HasRawWindowHandle> CustomizedWindow<W> {
+    pub fn wrap(window: W, options: WindowFrame) -> windows::Result<Self> {
         Self::wrap_with_id(window, options, 1)
     }
-    pub fn wrap_with_id(window: W, options: Options, subclass_id: usize) -> windows::Result<Self> {
+    pub fn wrap_with_id(
+        window: W,
+        options: WindowFrame,
+        subclass_id: usize,
+    ) -> windows::Result<Self> {
         let h_wnd = windows_window_handle(&window);
         let subclassed = Self {
             id: subclass_id,
             window,
             options: Box::new(options),
         };
-        let options_ptr = &*subclassed.options as *const Options;
+        let options_ptr = &*subclassed.options as *const WindowFrame;
         unsafe {
             SetWindowSubclass(
                 h_wnd,
@@ -61,8 +65,8 @@ impl<W: HasRawWindowHandle> SubClassedWindow<W> {
         }
         Ok(self.window)
     }
-    pub fn options_mut(&mut self) -> OptionsMut<W> {
-        OptionsMut { window: self }
+    pub fn edit_custom_frame(&mut self) -> WindowFrameMut<W> {
+        WindowFrameMut { window: self }
     }
     unsafe fn update(&self) {
         let h_wnd = windows_window_handle(&self.window);
@@ -97,35 +101,35 @@ fn windows_window_handle<W: HasRawWindowHandle>(window: &W) -> HWND {
     };
     HWND(window_handle as isize)
 }
-impl<W: HasRawWindowHandle> Deref for SubClassedWindow<W> {
+impl<W: HasRawWindowHandle> Deref for CustomizedWindow<W> {
     type Target = W;
 
     fn deref(&self) -> &Self::Target {
         &self.window
     }
 }
-impl<W: HasRawWindowHandle> DerefMut for SubClassedWindow<W> {
+impl<W: HasRawWindowHandle> DerefMut for CustomizedWindow<W> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.window
     }
 }
 
-pub struct OptionsMut<'a, W: HasRawWindowHandle> {
-    window: &'a mut SubClassedWindow<W>,
+pub struct WindowFrameMut<'a, W: HasRawWindowHandle> {
+    window: &'a mut CustomizedWindow<W>,
 }
-impl<'a, W: HasRawWindowHandle> Deref for OptionsMut<'a, W> {
-    type Target = Options;
+impl<'a, W: HasRawWindowHandle> Deref for WindowFrameMut<'a, W> {
+    type Target = WindowFrame;
 
     fn deref(&self) -> &Self::Target {
         &*self.window.options
     }
 }
-impl<'a, W: HasRawWindowHandle> DerefMut for OptionsMut<'a, W> {
+impl<'a, W: HasRawWindowHandle> DerefMut for WindowFrameMut<'a, W> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut *self.window.options
     }
 }
-impl<'a, W: HasRawWindowHandle> Drop for OptionsMut<'a, W> {
+impl<'a, W: HasRawWindowHandle> Drop for WindowFrameMut<'a, W> {
     fn drop(&mut self) {
         unsafe {
             self.window.update();
@@ -133,12 +137,12 @@ impl<'a, W: HasRawWindowHandle> Drop for OptionsMut<'a, W> {
     }
 }
 
-pub trait WithSubclass: HasRawWindowHandle + Sized {
-    fn with_subclass(self, options: Options) -> windows::Result<SubClassedWindow<Self>>;
+pub trait CustomWindowFrame: HasRawWindowHandle + Sized {
+    fn customize_frame(self, options: WindowFrame) -> windows::Result<CustomizedWindow<Self>>;
 }
-impl<W: HasRawWindowHandle> WithSubclass for W {
-    fn with_subclass(self, options: Options) -> windows::Result<SubClassedWindow<Self>> {
-        SubClassedWindow::wrap(self, options)
+impl<W: HasRawWindowHandle> CustomWindowFrame for W {
+    fn customize_frame(self, options: WindowFrame) -> windows::Result<CustomizedWindow<Self>> {
+        CustomizedWindow::wrap(self, options)
     }
 }
 
@@ -152,7 +156,7 @@ extern "system" fn subclass_procedure(
 ) -> LRESULT {
     unsafe {
         if is_dwm_enabled() {
-            let options = &*(dw_ref_data as *const Options);
+            let options = &*(dw_ref_data as *const WindowFrame);
 
             let msg = u_msg as i32;
 
@@ -192,7 +196,7 @@ extern "system" fn subclass_procedure(
                 DwmExtendFrameIntoClientArea(h_wnd, &p_mar_inset);
             }
             if msg == WM_NCCALCSIZE && w_param == WPARAM(TRUE as _) {
-                let Options {
+                let WindowFrame {
                     extend_client_area: adjust_client_area,
                     ..
                 } = options;

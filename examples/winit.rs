@@ -1,7 +1,7 @@
 use winit::event::ElementState;
 
 use {
-    win32_frame::{Options, WithSubclass},
+    win32_frame::{CustomWindowFrame, WindowFrame},
     winit::{
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
@@ -16,7 +16,7 @@ fn main() -> windows::Result<()> {
         .with_no_redirection_bitmap(true)
         .build(&event_loop)
         .unwrap()
-        .with_subclass(Options::custom_caption())?;
+        .customize_frame(WindowFrame::custom_caption())?;
 
     event_loop.run(move |event, _target, control_flow| match event {
         Event::WindowEvent {
@@ -30,11 +30,11 @@ fn main() -> windows::Result<()> {
             if let Some(key) = input.virtual_keycode {
                 match key {
                     winit::event::VirtualKeyCode::Down => {
-                        let mut options = window.options_mut();
+                        let mut options = window.edit_custom_frame();
                         options.extend_frame.top += 1;
                     }
                     winit::event::VirtualKeyCode::Up => {
-                        let mut options = window.options_mut();
+                        let mut options = window.edit_custom_frame();
                         options.extend_frame.top -= 1;
                     }
                     _ => {}
