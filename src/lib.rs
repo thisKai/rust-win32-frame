@@ -166,30 +166,6 @@ extern "system" fn subclass_procedure(
                 (result, handled)
             };
 
-            // if msg == WM_CREATE {
-            //     let mut rect = RECT::default();
-            //     GetWindowRect(h_wnd, &mut rect);
-
-            //     // Inform application of the frame change.
-            //     let width = rect.right - rect.left;
-            //     let height = rect.bottom - rect.top;
-
-            //     // Extend the frame into the client area.
-            //     let p_mar_inset = MARGINS {
-            //         cy_top_height: 1,
-            //         ..Default::default()
-            //     };
-            //     DwmExtendFrameIntoClientArea(h_wnd, &p_mar_inset);
-            //     SetWindowPos(
-            //         h_wnd,
-            //         HWND(0),
-            //         rect.left,
-            //         rect.top,
-            //         width,
-            //         height,
-            //         SWP_FRAMECHANGED as _,
-            //     );
-            // }
             if msg == WM_ACTIVATE {
                 // Extend the frame into the client area.
                 let p_mar_inset = options.extend_frame.to_win32();
