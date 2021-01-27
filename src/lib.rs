@@ -26,7 +26,7 @@ use {
 };
 
 pub struct CustomizedWindow<W: HasRawWindowHandle> {
-    id: usize,
+    subclass_id: usize,
     window: W,
     options: Box<WindowFrame>,
 }
@@ -41,7 +41,7 @@ impl<W: HasRawWindowHandle> CustomizedWindow<W> {
     ) -> windows::Result<Self> {
         let h_wnd = windows_window_handle(&window);
         let subclassed = Self {
-            id: subclass_id,
+            subclass_id,
             window,
             options: Box::new(options),
         };
@@ -61,7 +61,7 @@ impl<W: HasRawWindowHandle> CustomizedWindow<W> {
     pub fn unwrap(self) -> windows::Result<W> {
         let h_wnd = windows_window_handle(&self.window);
         unsafe {
-            RemoveWindowSubclass(h_wnd, Some(subclass_procedure), self.id).ok()?;
+            RemoveWindowSubclass(h_wnd, Some(subclass_procedure), self.subclass_id).ok()?;
         }
         Ok(self.window)
     }
