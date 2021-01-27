@@ -61,10 +61,30 @@ impl<W: HasRawWindowHandle> SubClassedWindow<W> {
         Ok(self.window)
     }
     pub fn options_mut(&mut self) -> OptionsMut<W> {
-        OptionsMut {
-            window: &self.window,
-            options: &mut *self.options,
-        }
+        OptionsMut { window: self }
+    }
+    unsafe fn update(&self) {
+        let h_wnd = windows_window_handle(&self.window);
+        let mut rect = RECT::default();
+
+        GetWindowRect(h_wnd, &mut rect);
+
+        // Inform application of the frame change.
+        let width = rect.right - rect.left;
+        let height = rect.bottom - rect.top;
+
+        let p_mar_inset = self.options.extend_frame.to_win32();
+
+        SetWindowPos(
+            h_wnd,
+            HWND(0),
+            rect.left,
+            rect.top,
+            width,
+            height,
+            SWP_FRAMECHANGED as _,
+        );
+        DwmExtendFrameIntoClientArea(h_wnd, &p_mar_inset);
     }
 }
 fn windows_window_handle<W: HasRawWindowHandle>(window: &W) -> HWND {
@@ -90,46 +110,24 @@ impl<W: HasRawWindowHandle> DerefMut for SubClassedWindow<W> {
 }
 
 pub struct OptionsMut<'a, W: HasRawWindowHandle> {
-    window: &'a W,
-    options: &'a mut Options,
+    window: &'a mut SubClassedWindow<W>,
 }
 impl<'a, W: HasRawWindowHandle> Deref for OptionsMut<'a, W> {
     type Target = Options;
 
     fn deref(&self) -> &Self::Target {
-        self.options
+        &*self.window.options
     }
 }
 impl<'a, W: HasRawWindowHandle> DerefMut for OptionsMut<'a, W> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        self.options
+        &mut *self.window.options
     }
 }
 impl<'a, W: HasRawWindowHandle> Drop for OptionsMut<'a, W> {
     fn drop(&mut self) {
-        let h_wnd = windows_window_handle(self.window);
-        let mut rect = RECT::default();
         unsafe {
-            GetWindowRect(h_wnd, &mut rect);
-        }
-
-        // Inform application of the frame change.
-        let width = rect.right - rect.left;
-        let height = rect.bottom - rect.top;
-
-        let p_mar_inset = self.options.extend_frame.to_win32();
-
-        unsafe {
-            SetWindowPos(
-                h_wnd,
-                HWND(0),
-                rect.left,
-                rect.top,
-                width,
-                height,
-                SWP_FRAMECHANGED as _,
-            );
-            DwmExtendFrameIntoClientArea(h_wnd, &p_mar_inset);
+            self.window.update();
         }
     }
 }
