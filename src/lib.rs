@@ -36,8 +36,12 @@ impl<W: HasRawWindowHandle> SubClassedWindow<W> {
     }
     pub fn wrap_with_id(window: W, options: Options, subclass_id: usize) -> windows::Result<Self> {
         let h_wnd = windows_window_handle(&window);
-        let options = Box::new(options);
-        let options_ptr = &*options as *const Options;
+        let subclassed = Self {
+            id: subclass_id,
+            window,
+            options: Box::new(options),
+        };
+        let options_ptr = &*subclassed.options as *const Options;
         unsafe {
             SetWindowSubclass(
                 h_wnd,
@@ -46,12 +50,9 @@ impl<W: HasRawWindowHandle> SubClassedWindow<W> {
                 options_ptr as usize,
             )
             .ok()?;
+            subclassed.update();
         }
-        Ok(Self {
-            id: subclass_id,
-            window,
-            options,
-        })
+        Ok(subclassed)
     }
     pub fn unwrap(self) -> windows::Result<W> {
         let h_wnd = windows_window_handle(&self.window);

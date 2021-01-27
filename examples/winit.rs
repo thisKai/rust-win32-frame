@@ -13,13 +13,10 @@ fn main() -> windows::Result<()> {
     let event_loop = EventLoop::new();
 
     let mut window = WindowBuilder::new()
-        .with_visible(false)
         .with_no_redirection_bitmap(true)
         .build(&event_loop)
         .unwrap()
         .with_subclass(Options::custom_caption())?;
-
-    window.set_visible(true);
 
     event_loop.run(move |event, _target, control_flow| match event {
         Event::WindowEvent {
