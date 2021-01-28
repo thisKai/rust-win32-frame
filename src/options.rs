@@ -1,12 +1,19 @@
-use crate::{bindings::windows::win32::controls::MARGINS, window_frame_borders};
+use crate::{
+    bindings::windows::win32::controls::MARGINS,
+    hit_test::{HitTestArea, Point, Size},
+    window_frame_borders,
+};
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct WindowFrame {
     pub extend_frame: Margins,
     pub extend_client_area: Margins,
     pub hit_test_extended_caption: bool,
     pub hit_test_extended_resize_borders: bool,
+    pub intercept_client_area_hit_test: Option<HitTestIntercept>,
+    pub intercept_top_resize_border_hit_test: Option<HitTestIntercept>,
 }
+pub type HitTestIntercept = Box<dyn Fn(&Point, &Size) -> Option<HitTestArea>>;
 impl WindowFrame {
     pub fn extended_caption(extra_height: i32) -> Self {
         Self {
@@ -14,6 +21,8 @@ impl WindowFrame {
             extend_client_area: Margins::default(),
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
+            intercept_client_area_hit_test: None,
+            intercept_top_resize_border_hit_test: None,
         }
     }
     pub fn custom_caption() -> Self {
@@ -22,6 +31,8 @@ impl WindowFrame {
             extend_client_area: Margins::default_caption(),
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
+            intercept_client_area_hit_test: None,
+            intercept_top_resize_border_hit_test: None,
         }
     }
     pub fn extended_custom_caption(extra_height: i32) -> Self {
@@ -30,6 +41,8 @@ impl WindowFrame {
             extend_client_area: Margins::default_caption(),
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
+            intercept_client_area_hit_test: None,
+            intercept_top_resize_border_hit_test: None,
         }
     }
     pub fn custom_caption_height(caption_height: i32) -> Self {
@@ -38,6 +51,8 @@ impl WindowFrame {
             extend_client_area: Margins::default_caption(),
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
+            intercept_client_area_hit_test: None,
+            intercept_top_resize_border_hit_test: None,
         }
     }
     pub fn remove_caption() -> Self {
@@ -46,6 +61,8 @@ impl WindowFrame {
             extend_client_area: Margins::default_caption(),
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
+            intercept_client_area_hit_test: None,
+            intercept_top_resize_border_hit_test: None,
         }
     }
 }
