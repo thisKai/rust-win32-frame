@@ -4,7 +4,6 @@ mod bindings {
 mod hit_test;
 mod options;
 
-pub use options::*;
 use {
     bindings::windows::win32::{
         display_devices::RECT,
@@ -19,11 +18,14 @@ use {
         },
     },
     hit_test::{
-        extent_hit_test, non_client_hit_test, Border, ExtentHitTest, HitTest, HitTestArea, Point,
-        WindowMetrics,
+        extent_hit_test, non_client_hit_test, Border, ExtentHitTest, HitTest, WindowMetrics,
     },
     raw_window_handle::{HasRawWindowHandle, RawWindowHandle},
     std::ops::{Deref, DerefMut},
+};
+pub use {
+    hit_test::{HitTestArea, Point, Size},
+    options::*,
 };
 
 pub struct CustomizedWindow<W: HasRawWindowHandle> {

@@ -1,7 +1,7 @@
 use winit::event::ElementState;
 
 use {
-    win32_frame::{CustomWindowFrame, WindowFrame},
+    win32_frame::{CustomWindowFrame, HitTestArea, WindowFrame},
     winit::{
         event::{Event, WindowEvent},
         event_loop::{ControlFlow, EventLoop},
@@ -16,7 +16,16 @@ fn main() -> windows::Result<()> {
         .with_no_redirection_bitmap(true)
         .build(&event_loop)
         .unwrap()
-        .customize_frame(WindowFrame::custom_caption())?;
+        .customize_frame(WindowFrame {
+            intercept_client_area_hit_test: Some(Box::new(|pos, size| {
+                if pos.x > size.width / 2 {
+                    Some(HitTestArea::Client)
+                } else {
+                    None
+                }
+            })),
+            ..WindowFrame::custom_caption()
+        })?;
 
     event_loop.run(move |event, _target, control_flow| match event {
         Event::WindowEvent {

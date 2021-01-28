@@ -23,8 +23,8 @@ impl Point {
 }
 
 pub struct Size {
-    width: i32,
-    height: i32,
+    pub width: i32,
+    pub height: i32,
 }
 
 pub struct HitTest {
