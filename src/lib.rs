@@ -19,7 +19,8 @@ use {
         },
     },
     hit_test::{
-        default_hit_test, extent_hit_test, Border, ExtentHitTest, HitTest, Point, WindowMetrics,
+        extent_hit_test, non_client_hit_test, Border, ExtentHitTest, HitTest, HitTestArea, Point,
+        WindowMetrics,
     },
     raw_window_handle::{HasRawWindowHandle, RawWindowHandle},
     std::ops::{Deref, DerefMut},
@@ -186,50 +187,14 @@ extern "system" fn subclass_procedure(
                 pncsp.rgrc[0].bottom += adjust_client_area.bottom;
             }
             if msg == WM_NCHITTEST && dwm_result == LRESULT(0) {
-                let point = Point::from_l_param(l_param);
+                let global_position = Point::from_l_param(l_param);
 
                 let metrics = WindowMetrics::new(h_wnd);
 
-                let (default_hit_test, client_area_size) =
-                    default_hit_test(point, &metrics, options);
-
-                match default_hit_test {
-                    HitTest::ResizeBorder(border) => return border.l_result(),
-                    caption @ HitTest::Caption => return caption.l_result(),
-                    HitTest::ClientArea(point) => {
-                        match extent_hit_test(point, client_area_size, options) {
-                            ExtentHitTest::Extent(Border::Top)
-                                if options.hit_test_extended_caption =>
-                            {
-                                return HitTest::Caption.l_result()
-                            }
-                            ExtentHitTest::Extent(Border::TopLeft)
-                            | ExtentHitTest::Extent(Border::TopRight)
-                                if options.hit_test_extended_caption
-                                    && !options.hit_test_extended_resize_borders =>
-                            {
-                                return HitTest::Caption.l_result()
-                            }
-                            ExtentHitTest::Extent(Border::TopLeft)
-                                if options.hit_test_extended_caption
-                                    && options.hit_test_extended_resize_borders =>
-                            {
-                                return Border::Left.l_result();
-                            }
-                            ExtentHitTest::Extent(Border::TopRight)
-                                if options.hit_test_extended_caption
-                                    && options.hit_test_extended_resize_borders =>
-                            {
-                                return Border::Right.l_result();
-                            }
-                            ExtentHitTest::Extent(border)
-                                if options.hit_test_extended_resize_borders =>
-                            {
-                                return border.l_result()
-                            }
-                            _ => {}
-                        }
-                    }
+                let def_hit_test = non_client_hit_test(global_position, &metrics, options);
+                let hit_test = transform_hit_test(def_hit_test, options);
+                if !matches!(hit_test, HitTestArea::Client) {
+                    return hit_test.l_result();
                 }
             }
 
@@ -239,6 +204,45 @@ extern "system" fn subclass_procedure(
         }
 
         DefSubclassProc(h_wnd, u_msg, w_param, l_param)
+    }
+}
+
+unsafe fn transform_hit_test(hit_test: HitTest, options: &WindowFrame) -> HitTestArea {
+    let client_area_size = hit_test.client_size;
+
+    match hit_test.area {
+        border @ HitTestArea::Resize(_) => border,
+        caption @ HitTestArea::Caption => caption,
+        HitTestArea::Client => {
+            match extent_hit_test(hit_test.client_position, client_area_size, options) {
+                ExtentHitTest::Extent(Border::Top) if options.hit_test_extended_caption => {
+                    HitTestArea::Caption
+                }
+                ExtentHitTest::Extent(Border::TopLeft)
+                | ExtentHitTest::Extent(Border::TopRight)
+                    if options.hit_test_extended_caption
+                        && !options.hit_test_extended_resize_borders =>
+                {
+                    HitTestArea::Caption
+                }
+                ExtentHitTest::Extent(Border::TopLeft)
+                    if options.hit_test_extended_caption
+                        && options.hit_test_extended_resize_borders =>
+                {
+                    HitTestArea::Resize(Border::Left)
+                }
+                ExtentHitTest::Extent(Border::TopRight)
+                    if options.hit_test_extended_caption
+                        && options.hit_test_extended_resize_borders =>
+                {
+                    HitTestArea::Resize(Border::Right)
+                }
+                ExtentHitTest::Extent(border) if options.hit_test_extended_resize_borders => {
+                    HitTestArea::Resize(border)
+                }
+                _ => HitTestArea::Client,
+            }
+        }
     }
 }
 

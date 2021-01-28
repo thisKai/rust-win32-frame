@@ -27,18 +27,23 @@ pub struct Size {
     height: i32,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum HitTest {
-    Caption,
-    ResizeBorder(Border),
-    ClientArea(Point),
+pub struct HitTest {
+    pub area: HitTestArea,
+    pub client_position: Point,
+    pub client_size: Size,
 }
-impl HitTest {
+#[derive(Debug, Clone, Copy)]
+pub enum HitTestArea {
+    Caption,
+    Resize(Border),
+    Client,
+}
+impl HitTestArea {
     pub fn l_result(&self) -> LRESULT {
         match self {
             Self::Caption => LRESULT(HTCAPTION),
-            Self::ResizeBorder(border) => border.l_result(),
-            Self::ClientArea(_) => LRESULT(HTNOWHERE),
+            Self::Resize(border) => border.l_result(),
+            Self::Client => LRESULT(HTNOWHERE),
         }
     }
 }
@@ -101,11 +106,11 @@ impl WindowFrameMetrics {
     }
 }
 
-pub(crate) unsafe fn default_hit_test(
+pub(crate) unsafe fn non_client_hit_test(
     point: Point,
     metrics: &WindowMetrics,
     options: &WindowFrame,
-) -> (HitTest, Size) {
+) -> HitTest {
     // Get the point coordinates for the hit test.
     let Point { x, y } = point;
 
@@ -137,35 +142,36 @@ pub(crate) unsafe fn default_hit_test(
     // Hit test (HTTOPLEFT, ... HTBOTTOMRIGHT)
     let hit_tests = [
         [
-            HitTest::ResizeBorder(Border::TopLeft),
+            HitTestArea::Resize(Border::TopLeft),
             if top_resize_border {
-                HitTest::ResizeBorder(Border::Top)
+                HitTestArea::Resize(Border::Top)
             } else {
-                HitTest::Caption
+                HitTestArea::Caption
             },
-            HitTest::ResizeBorder(Border::TopRight),
+            HitTestArea::Resize(Border::TopRight),
         ],
         [
-            HitTest::ResizeBorder(Border::Left),
-            HitTest::ClientArea(Point {
-                x: x - client_area_left,
-                y: y - client_area_top,
-            }),
-            HitTest::ResizeBorder(Border::Right),
+            HitTestArea::Resize(Border::Left),
+            HitTestArea::Client,
+            HitTestArea::Resize(Border::Right),
         ],
         [
-            HitTest::ResizeBorder(Border::BottomLeft),
-            HitTest::ResizeBorder(Border::Bottom),
-            HitTest::ResizeBorder(Border::BottomRight),
+            HitTestArea::Resize(Border::BottomLeft),
+            HitTestArea::Resize(Border::Bottom),
+            HitTestArea::Resize(Border::BottomRight),
         ],
     ];
-    (
-        hit_tests[row][col],
-        Size {
+    HitTest {
+        area: hit_tests[row][col],
+        client_position: Point {
+            x: x - client_area_left,
+            y: y - client_area_top,
+        },
+        client_size: Size {
             width: client_area_right - client_area_left,
             height: client_area_bottom - client_area_top,
         },
-    )
+    }
 }
 
 pub(crate) unsafe fn extent_hit_test(
