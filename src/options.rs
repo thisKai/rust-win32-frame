@@ -25,6 +25,16 @@ impl WindowFrame {
             intercept_top_resize_border_hit_test: None,
         }
     }
+    pub fn sheet() -> Self {
+        Self {
+            extend_frame: Margins::sheet(),
+            extend_client_area: Margins::default(),
+            hit_test_extended_caption: true,
+            hit_test_extended_resize_borders: false,
+            intercept_client_area_hit_test: None,
+            intercept_top_resize_border_hit_test: None,
+        }
+    }
     pub fn custom_caption() -> Self {
         Self {
             extend_frame: Margins::default_caption(),
@@ -38,6 +48,16 @@ impl WindowFrame {
     pub fn extended_custom_caption(extra_height: i32) -> Self {
         Self {
             extend_frame: Margins::extended_caption(extra_height),
+            extend_client_area: Margins::default_caption(),
+            hit_test_extended_caption: true,
+            hit_test_extended_resize_borders: false,
+            intercept_client_area_hit_test: None,
+            intercept_top_resize_border_hit_test: None,
+        }
+    }
+    pub fn custom_sheet() -> Self {
+        Self {
+            extend_frame: Margins::sheet(),
             extend_client_area: Margins::default_caption(),
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,

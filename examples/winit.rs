@@ -17,14 +17,8 @@ fn main() -> windows::Result<()> {
         .build(&event_loop)
         .unwrap()
         .customize_frame(WindowFrame {
-            intercept_client_area_hit_test: Some(Box::new(|pos, size| {
-                if pos.x > size.width / 2 {
-                    Some(HitTestArea::Client)
-                } else {
-                    None
-                }
-            })),
-            ..WindowFrame::custom_caption()
+            intercept_client_area_hit_test: Some(Box::new(|_pos, _size| Some(HitTestArea::Caption))),
+            ..WindowFrame::sheet()
         })?;
 
     event_loop.run(move |event, _target, control_flow| match event {
