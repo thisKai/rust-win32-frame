@@ -185,9 +185,10 @@ pub(crate) unsafe fn extent_hit_test(
     // Determine if the hit test is for resizing. Default middle (1,1).
     let mut row = 1;
     let mut col = 1;
+    let extend_frame = options.extend_frame.zero_if_sheet();
 
-    let client_area_top = options.extend_frame.top;
-    let client_area_bottom = client_size.height - options.extend_frame.bottom;
+    let client_area_top = extend_frame.top;
+    let client_area_bottom = client_size.height - extend_frame.bottom;
     // Determine if the point is at the top or bottom of the window.
     if y >= 0 && y < client_area_top {
         row = 0;
@@ -195,8 +196,8 @@ pub(crate) unsafe fn extent_hit_test(
         row = 2;
     }
 
-    let client_area_left = options.extend_frame.left;
-    let client_area_right = client_size.width - options.extend_frame.right;
+    let client_area_left = extend_frame.left;
+    let client_area_right = client_size.width - extend_frame.right;
     // Determine if the point is at the left or right of the window.
     if x >= 0 && x < client_area_left {
         col = 0; // left side

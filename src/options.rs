@@ -129,6 +129,14 @@ impl Margins {
             cy_bottom_height: self.bottom,
         }
     }
+    pub(crate) fn zero_if_sheet(&self) -> Self {
+        Self {
+            left: if self.left < 0 { 0 } else { self.left },
+            top: if self.top < 0 { 0 } else { self.top },
+            right: if self.right < 0 { 0 } else { self.right },
+            bottom: if self.bottom < 0 { 0 } else { self.bottom },
+        }
+    }
 }
 
 pub fn system_caption_height() -> i32 {
