@@ -16,7 +16,7 @@ pub struct Point {
     pub y: i32,
 }
 impl Point {
-    pub fn from_l_param(l_param: LPARAM) -> Self {
+    pub(crate) fn from_l_param(l_param: LPARAM) -> Self {
         let (x, y) = get_l_param_point(l_param);
         Self { x, y }
     }
@@ -27,10 +27,10 @@ pub struct Size {
     pub height: i32,
 }
 
-pub struct HitTest {
-    pub area: HitTestArea,
-    pub client_position: Point,
-    pub client_size: Size,
+pub(crate) struct HitTest {
+    pub(crate) area: HitTestArea,
+    pub(crate) client_position: Point,
+    pub(crate) client_size: Size,
 }
 #[derive(Debug, Clone, Copy)]
 pub enum HitTestArea {
@@ -39,7 +39,7 @@ pub enum HitTestArea {
     Client,
 }
 impl HitTestArea {
-    pub fn l_result(&self) -> LRESULT {
+    pub(crate) fn l_result(&self) -> LRESULT {
         match self {
             Self::Caption => LRESULT(HTCAPTION),
             Self::Resize(border) => border.l_result(),
@@ -49,7 +49,7 @@ impl HitTestArea {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum ExtentHitTest {
+pub(crate) enum ExtentHitTest {
     Extent(Border),
     ClientArea(Point),
 }
@@ -67,17 +67,17 @@ pub enum Border {
     BottomRight = HTBOTTOMRIGHT,
 }
 impl Border {
-    pub fn l_result(&self) -> LRESULT {
+    pub(crate) fn l_result(&self) -> LRESULT {
         LRESULT(*self as i32)
     }
 }
 
-pub struct WindowMetrics {
+pub(crate) struct WindowMetrics {
     window: RECT,
     frame: WindowFrameMetrics,
 }
 impl WindowMetrics {
-    pub unsafe fn new(h_wnd: HWND) -> Self {
+    pub(crate) unsafe fn new(h_wnd: HWND) -> Self {
         // Get the window rectangle.
         let mut rect = RECT::default();
         GetWindowRect(h_wnd, &mut rect);
@@ -87,12 +87,12 @@ impl WindowMetrics {
         }
     }
 }
-pub struct WindowFrameMetrics {
+pub(crate) struct WindowFrameMetrics {
     adjust_resize_borders: RECT,
     adjust_caption: i32,
 }
 impl WindowFrameMetrics {
-    pub unsafe fn new() -> Self {
+    pub(crate) unsafe fn new() -> Self {
         // Get the frame rectangle, adjusted for the style without a caption.
         let frame_rect = window_frame_borders(false);
 
