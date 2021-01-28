@@ -90,16 +90,14 @@ impl Margins {
         }
     }
     pub fn default_caption() -> Self {
-        let frame_rect = unsafe { window_frame_borders(true) };
         Self {
-            top: -frame_rect.top,
+            top: system_caption_height(),
             ..Default::default()
         }
     }
     pub fn extended_caption(caption_height: i32) -> Self {
-        let frame_rect = unsafe { window_frame_borders(true) };
         Self {
-            top: caption_height - frame_rect.top,
+            top: caption_height + system_caption_height(),
             ..Default::default()
         }
     }
@@ -111,4 +109,9 @@ impl Margins {
             cy_bottom_height: self.bottom,
         }
     }
+}
+
+pub fn system_caption_height() -> i32 {
+    let frame_rect = unsafe { window_frame_borders(true) };
+    -frame_rect.top
 }
