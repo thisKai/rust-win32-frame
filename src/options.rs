@@ -8,6 +8,7 @@ use crate::{
 pub struct WindowFrame {
     pub extend_frame: Margins,
     pub extend_client_area: Margins,
+    pub hit_test_caption_buttons: bool,
     pub hit_test_extended_caption: bool,
     pub hit_test_extended_resize_borders: bool,
     pub intercept_client_area_hit_test: Option<HitTestIntercept>,
@@ -19,6 +20,7 @@ impl WindowFrame {
         Self {
             extend_frame: Margins::caption(extra_height),
             extend_client_area: Margins::default(),
+            hit_test_caption_buttons: true,
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
             intercept_client_area_hit_test: None,
@@ -29,6 +31,7 @@ impl WindowFrame {
         Self {
             extend_frame: Margins::sheet(),
             extend_client_area: Margins::default(),
+            hit_test_caption_buttons: true,
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
             intercept_client_area_hit_test: None,
@@ -39,6 +42,7 @@ impl WindowFrame {
         Self {
             extend_frame: Margins::default_caption(),
             extend_client_area: Margins::default_caption(),
+            hit_test_caption_buttons: true,
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
             intercept_client_area_hit_test: None,
@@ -49,6 +53,7 @@ impl WindowFrame {
         Self {
             extend_frame: Margins::extended_caption(extra_height),
             extend_client_area: Margins::default_caption(),
+            hit_test_caption_buttons: true,
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
             intercept_client_area_hit_test: None,
@@ -59,6 +64,7 @@ impl WindowFrame {
         Self {
             extend_frame: Margins::sheet(),
             extend_client_area: Margins::default_caption(),
+            hit_test_caption_buttons: true,
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
             intercept_client_area_hit_test: None,
@@ -69,6 +75,7 @@ impl WindowFrame {
         Self {
             extend_frame: Margins::caption(caption_height),
             extend_client_area: Margins::default_caption(),
+            hit_test_caption_buttons: true,
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
             intercept_client_area_hit_test: None,
@@ -79,6 +86,7 @@ impl WindowFrame {
         Self {
             extend_frame: Margins::default(),
             extend_client_area: Margins::default_caption(),
+            hit_test_caption_buttons: true,
             hit_test_extended_caption: true,
             hit_test_extended_resize_borders: false,
             intercept_client_area_hit_test: None,

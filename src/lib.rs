@@ -164,9 +164,13 @@ extern "system" fn subclass_procedure(
             let msg = u_msg as i32;
 
             let (dwm_result, dwm_handled) = {
-                let mut result = LRESULT(0);
-                let handled = DwmDefWindowProc(h_wnd, u_msg, w_param, l_param, &mut result).is_ok();
-                (result, handled)
+                if options.hit_test_caption_buttons {
+                    let mut result = LRESULT(0);
+                    let handled = DwmDefWindowProc(h_wnd, u_msg, w_param, l_param, &mut result).is_ok();
+                    (result, handled)
+                } else {
+                    (LRESULT(0), false)
+                }
             };
 
             if msg == WM_ACTIVATE {
@@ -188,7 +192,7 @@ extern "system" fn subclass_procedure(
                 pncsp.rgrc[0].right += adjust_client_area.right;
                 pncsp.rgrc[0].bottom += adjust_client_area.bottom;
             }
-            if msg == WM_NCHITTEST && dwm_result == LRESULT(0) {
+            if msg == WM_NCHITTEST && !dwm_handled {
                 let global_position = Point::from_l_param(l_param);
 
                 let metrics = WindowMetrics::new(h_wnd);

@@ -17,8 +17,11 @@ fn main() -> windows::Result<()> {
         .build(&event_loop)
         .unwrap()
         .customize_frame(WindowFrame {
-            intercept_client_area_hit_test: Some(Box::new(|_pos, _size| Some(HitTestArea::Caption))),
-            ..WindowFrame::sheet()
+            intercept_client_area_hit_test: Some(Box::new(|_pos, _size| {
+                Some(HitTestArea::Caption)
+            })),
+            hit_test_caption_buttons: false,
+            ..WindowFrame::custom_caption()
         })?;
 
     event_loop.run(move |event, _target, control_flow| match event {
