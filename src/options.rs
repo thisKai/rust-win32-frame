@@ -2,10 +2,12 @@ use crate::{
     bindings::windows::win32::controls::MARGINS,
     hit_test::{HitTestArea, Point, Size},
     window_frame_borders,
+    dark_mode::Theme,
 };
 
 #[derive(Default)]
 pub struct WindowFrame {
+    pub theme: Option<Theme>,
     pub extend_frame: Margins,
     pub extend_client_area: Margins,
     pub hit_test_caption_buttons: bool,
@@ -18,6 +20,7 @@ pub type HitTestIntercept = Box<dyn Fn(&Point, &Size) -> Option<HitTestArea>>;
 impl WindowFrame {
     pub fn extended_caption(extra_height: i32) -> Self {
         Self {
+            theme: None,
             extend_frame: Margins::caption(extra_height),
             extend_client_area: Margins::default(),
             hit_test_caption_buttons: true,
@@ -29,6 +32,7 @@ impl WindowFrame {
     }
     pub fn sheet() -> Self {
         Self {
+            theme: None,
             extend_frame: Margins::sheet(),
             extend_client_area: Margins::default(),
             hit_test_caption_buttons: true,
@@ -40,6 +44,7 @@ impl WindowFrame {
     }
     pub fn custom_caption() -> Self {
         Self {
+            theme: None,
             extend_frame: Margins::default_caption(),
             extend_client_area: Margins::default_caption(),
             hit_test_caption_buttons: true,
@@ -51,6 +56,7 @@ impl WindowFrame {
     }
     pub fn extended_custom_caption(extra_height: i32) -> Self {
         Self {
+            theme: None,
             extend_frame: Margins::extended_caption(extra_height),
             extend_client_area: Margins::default_caption(),
             hit_test_caption_buttons: true,
@@ -62,6 +68,7 @@ impl WindowFrame {
     }
     pub fn custom_sheet() -> Self {
         Self {
+            theme: None,
             extend_frame: Margins::sheet(),
             extend_client_area: Margins::default_caption(),
             hit_test_caption_buttons: true,
@@ -73,6 +80,7 @@ impl WindowFrame {
     }
     pub fn custom_caption_height(caption_height: i32) -> Self {
         Self {
+            theme: None,
             extend_frame: Margins::caption(caption_height),
             extend_client_area: Margins::default_caption(),
             hit_test_caption_buttons: true,
@@ -84,6 +92,7 @@ impl WindowFrame {
     }
     pub fn remove_caption() -> Self {
         Self {
+            theme: None,
             extend_frame: Margins::default(),
             extend_client_area: Margins::default_caption(),
             hit_test_caption_buttons: true,

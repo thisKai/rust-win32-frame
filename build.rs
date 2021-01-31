@@ -13,6 +13,7 @@ fn main() {
             HTTOPLEFT, HTTOP, HTCAPTION, HTTOPRIGHT,
             HTLEFT, HTNOWHERE, HTRIGHT,
             HTBOTTOMLEFT, HTBOTTOM, HTBOTTOMRIGHT,
+            NTSTATUS,
         }
         windows::win32::windows_and_messaging::{
             GetWindowRect,

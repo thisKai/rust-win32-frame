@@ -1,6 +1,7 @@
 mod bindings {
     ::windows::include_bindings!();
 }
+mod dark_mode;
 mod hit_test;
 mod options;
 
@@ -17,6 +18,7 @@ use {
             AdjustWindowRectEx, GetWindowRect, SetWindowPos, WINDOWPOS_abi, HWND, LPARAM, WPARAM,
         },
     },
+    dark_mode::{dark_dwm_decorations, Theme},
     hit_test::{
         extent_hit_test, non_client_hit_test, Border, ExtentHitTest, HitTest, WindowMetrics,
     },
@@ -73,8 +75,12 @@ impl<W: HasRawWindowHandle> CustomizedWindow<W> {
     }
     unsafe fn update(&self) {
         let h_wnd = windows_window_handle(&self.window);
-        let mut rect = RECT::default();
 
+        if let Some(theme) = &self.options.theme {
+            dark_dwm_decorations(h_wnd, matches!(theme, Theme::Dark));
+        }
+
+        let mut rect = RECT::default();
         GetWindowRect(h_wnd, &mut rect);
 
         // Inform application of the frame change.
@@ -166,7 +172,8 @@ extern "system" fn subclass_procedure(
             let (dwm_result, dwm_handled) = {
                 if options.hit_test_caption_buttons {
                     let mut result = LRESULT(0);
-                    let handled = DwmDefWindowProc(h_wnd, u_msg, w_param, l_param, &mut result).is_ok();
+                    let handled =
+                        DwmDefWindowProc(h_wnd, u_msg, w_param, l_param, &mut result).is_ok();
                     (result, handled)
                 } else {
                     (LRESULT(0), false)

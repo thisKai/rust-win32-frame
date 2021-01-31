@@ -9,6 +9,8 @@ edition = "2018"
 [dependencies]
 windows = "0.2.1"
 raw-window-handle = "0.3"
+windows-dll = { git = "https://github.com/thisKai/rust-windows-dll", branch = "windows-rs", default-features = false, features = ["windows"] }
+once_cell = "1"
 
 [build-dependencies]
 windows = "0.2.1"
