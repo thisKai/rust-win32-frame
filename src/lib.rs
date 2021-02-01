@@ -17,7 +17,10 @@ use {
     },
     dark_mode::dark_dwm_decorations,
     raw_window_handle::HasRawWindowHandle,
-    std::ops::{Deref, DerefMut},
+    std::{
+        cell::Cell,
+        ops::{Deref, DerefMut},
+    },
     subclass::subclass_procedure,
     util::{window_frame_borders, windows_window_handle},
 };
@@ -31,6 +34,7 @@ pub struct WindowCustomization {
     handle: HWND,
     subclass_id: usize,
     options: Box<WindowFrame>,
+    is_set: Cell<bool>,
 }
 impl WindowCustomization {
     pub fn new<W: HasRawWindowHandle>(window: &W, options: WindowFrame) -> windows::Result<Self> {
@@ -46,6 +50,7 @@ impl WindowCustomization {
             handle,
             subclass_id,
             options: Box::new(options),
+            is_set: Cell::new(false),
         };
         unsafe {
             customization.set()?;
@@ -61,11 +66,14 @@ impl WindowCustomization {
             options_ptr as usize,
         )
         .ok()?;
+        self.is_set.set(true);
         self.update();
         Ok(())
     }
     pub fn edit(&mut self) -> WindowFrameMut {
-        WindowFrameMut { customization: self }
+        WindowFrameMut {
+            customization: self,
+        }
     }
     unsafe fn update(&self) {
         if let Some(theme) = &self.options.theme {
@@ -93,13 +101,17 @@ impl WindowCustomization {
         DwmExtendFrameIntoClientArea(self.handle, &p_mar_inset);
     }
     pub unsafe fn remove(&self) -> windows::Result<()> {
-        RemoveWindowSubclass(self.handle, Some(subclass_procedure), self.subclass_id).ok()
+        RemoveWindowSubclass(self.handle, Some(subclass_procedure), self.subclass_id).ok()?;
+        self.is_set.set(false);
+        Ok(())
     }
 }
 impl Drop for WindowCustomization {
     fn drop(&mut self) {
-        unsafe {
-            let _ = self.remove();
+        if self.is_set.get() {
+            unsafe {
+                let _ = self.remove();
+            }
         }
     }
 }
