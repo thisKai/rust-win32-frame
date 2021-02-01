@@ -27,6 +27,80 @@ pub use {
     options::*,
 };
 
+pub struct WindowCustomization {
+    handle: HWND,
+    subclass_id: usize,
+    options: Box<WindowFrame>,
+}
+impl WindowCustomization {
+    pub fn new<W: HasRawWindowHandle>(window: &W, options: WindowFrame) -> windows::Result<Self> {
+        Self::with_id(window, options, 1)
+    }
+    pub fn with_id<W: HasRawWindowHandle>(
+        window: &W,
+        options: WindowFrame,
+        subclass_id: usize,
+    ) -> windows::Result<Self> {
+        let handle = windows_window_handle(window);
+        let customization = Self {
+            handle,
+            subclass_id,
+            options: Box::new(options),
+        };
+        unsafe {
+            customization.set()?;
+        }
+        Ok(customization)
+    }
+    pub unsafe fn set(&self) -> windows::Result<()> {
+        let options_ptr = &*self.options as *const WindowFrame;
+        SetWindowSubclass(
+            self.handle,
+            Some(subclass_procedure),
+            self.subclass_id,
+            options_ptr as usize,
+        )
+        .ok()?;
+        self.update();
+        Ok(())
+    }
+    unsafe fn update(&self) {
+        if let Some(theme) = &self.options.theme {
+            dark_dwm_decorations(self.handle, matches!(theme, Theme::Dark));
+        }
+
+        let mut rect = RECT::default();
+        GetWindowRect(self.handle, &mut rect);
+
+        // Inform application of the frame change.
+        let width = rect.right - rect.left;
+        let height = rect.bottom - rect.top;
+
+        let p_mar_inset = self.options.extend_frame.to_win32();
+
+        SetWindowPos(
+            self.handle,
+            HWND(0),
+            rect.left,
+            rect.top,
+            width,
+            height,
+            SWP_FRAMECHANGED as _,
+        );
+        DwmExtendFrameIntoClientArea(self.handle, &p_mar_inset);
+    }
+    pub unsafe fn remove(&self) -> windows::Result<()> {
+        RemoveWindowSubclass(self.handle, Some(subclass_procedure), self.subclass_id).ok()
+    }
+}
+impl Drop for WindowCustomization {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = self.remove();
+        }
+    }
+}
+
 pub struct CustomizedWindow<W: HasRawWindowHandle> {
     subclass_id: usize,
     window: W,
