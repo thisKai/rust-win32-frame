@@ -229,6 +229,64 @@ pub(crate) unsafe fn extent_hit_test(
     hit_tests[row][col]
 }
 
+pub(crate) unsafe fn transform_hit_test(hit_test: HitTest, options: &WindowFrame) -> HitTestArea {
+    match hit_test.area {
+        border @ HitTestArea::Resize(Border::Top) => {
+            match options
+                .intercept_top_resize_border_hit_test
+                .as_ref()
+                .and_then(|intercept| intercept(&hit_test.client_position, &hit_test.client_size))
+            {
+                Some(area) => area,
+                None => border,
+            }
+        }
+        border @ HitTestArea::Resize(_) => border,
+        caption @ HitTestArea::Caption => caption,
+        HitTestArea::Client => {
+            match options
+                .intercept_client_area_hit_test
+                .as_ref()
+                .and_then(|intercept| intercept(&hit_test.client_position, &hit_test.client_size))
+            {
+                Some(area) => area,
+                None => {
+                    match extent_hit_test(hit_test.client_position, hit_test.client_size, options) {
+                        ExtentHitTest::Extent(Border::Top) if options.hit_test_extended_caption => {
+                            HitTestArea::Caption
+                        }
+                        ExtentHitTest::Extent(Border::TopLeft)
+                        | ExtentHitTest::Extent(Border::TopRight)
+                            if options.hit_test_extended_caption
+                                && !options.hit_test_extended_resize_borders =>
+                        {
+                            HitTestArea::Caption
+                        }
+                        ExtentHitTest::Extent(Border::TopLeft)
+                            if options.hit_test_extended_caption
+                                && options.hit_test_extended_resize_borders =>
+                        {
+                            HitTestArea::Resize(Border::Left)
+                        }
+                        ExtentHitTest::Extent(Border::TopRight)
+                            if options.hit_test_extended_caption
+                                && options.hit_test_extended_resize_borders =>
+                        {
+                            HitTestArea::Resize(Border::Right)
+                        }
+                        ExtentHitTest::Extent(border)
+                            if options.hit_test_extended_resize_borders =>
+                        {
+                            HitTestArea::Resize(border)
+                        }
+                        _ => HitTestArea::Client,
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn get_l_param_point(lp: LPARAM) -> (i32, i32) {
     (
         lo_word(lp.0 as u32) as i16 as i32,

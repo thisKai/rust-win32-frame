@@ -4,26 +4,23 @@ mod bindings {
 mod dark_mode;
 mod hit_test;
 mod options;
+mod util;
 
 use {
     bindings::windows::win32::{
         display_devices::RECT,
-        dwm::{DwmDefWindowProc, DwmExtendFrameIntoClientArea, DwmIsCompositionEnabled},
+        dwm::{DwmDefWindowProc, DwmExtendFrameIntoClientArea},
         shell::{DefSubclassProc, RemoveWindowSubclass, SetWindowSubclass},
         system_services::{
-            FALSE, LRESULT, SWP_FRAMECHANGED, TRUE, WM_ACTIVATE, WM_NCCALCSIZE, WM_NCHITTEST,
-            WS_CAPTION, WS_OVERLAPPEDWINDOW,
+            LRESULT, SWP_FRAMECHANGED, TRUE, WM_ACTIVATE, WM_NCCALCSIZE, WM_NCHITTEST,
         },
-        windows_and_messaging::{
-            AdjustWindowRectEx, GetWindowRect, SetWindowPos, WINDOWPOS_abi, HWND, LPARAM, WPARAM,
-        },
+        windows_and_messaging::{GetWindowRect, SetWindowPos, HWND, LPARAM, WPARAM},
     },
     dark_mode::dark_dwm_decorations,
-    hit_test::{
-        extent_hit_test, non_client_hit_test, Border, ExtentHitTest, HitTest, WindowMetrics,
-    },
-    raw_window_handle::{HasRawWindowHandle, RawWindowHandle},
+    hit_test::{non_client_hit_test, transform_hit_test, WindowMetrics},
+    raw_window_handle::HasRawWindowHandle,
     std::ops::{Deref, DerefMut},
+    util::{is_dwm_enabled, window_frame_borders, windows_window_handle, NCCALCSIZE_PARAMS},
 };
 pub use {
     dark_mode::Theme,
@@ -101,15 +98,6 @@ impl<W: HasRawWindowHandle> CustomizedWindow<W> {
         );
         DwmExtendFrameIntoClientArea(h_wnd, &p_mar_inset);
     }
-}
-fn windows_window_handle<W: HasRawWindowHandle>(window: &W) -> HWND {
-    // Get the window handle
-    let window_handle = window.raw_window_handle();
-    let window_handle = match window_handle {
-        RawWindowHandle::Windows(window_handle) => window_handle.hwnd,
-        _ => panic!("Unsupported platform!"),
-    };
-    HWND(window_handle as isize)
 }
 impl<W: HasRawWindowHandle> Deref for CustomizedWindow<W> {
     type Target = W;
@@ -219,87 +207,4 @@ extern "system" fn subclass_procedure(
 
         DefSubclassProc(h_wnd, u_msg, w_param, l_param)
     }
-}
-
-unsafe fn transform_hit_test(hit_test: HitTest, options: &WindowFrame) -> HitTestArea {
-    match hit_test.area {
-        border @ HitTestArea::Resize(Border::Top) => {
-            match options
-                .intercept_top_resize_border_hit_test
-                .as_ref()
-                .and_then(|intercept| intercept(&hit_test.client_position, &hit_test.client_size))
-            {
-                Some(area) => area,
-                None => border,
-            }
-        }
-        border @ HitTestArea::Resize(_) => border,
-        caption @ HitTestArea::Caption => caption,
-        HitTestArea::Client => {
-            match options
-                .intercept_client_area_hit_test
-                .as_ref()
-                .and_then(|intercept| intercept(&hit_test.client_position, &hit_test.client_size))
-            {
-                Some(area) => area,
-                None => {
-                    match extent_hit_test(hit_test.client_position, hit_test.client_size, options) {
-                        ExtentHitTest::Extent(Border::Top) if options.hit_test_extended_caption => {
-                            HitTestArea::Caption
-                        }
-                        ExtentHitTest::Extent(Border::TopLeft)
-                        | ExtentHitTest::Extent(Border::TopRight)
-                            if options.hit_test_extended_caption
-                                && !options.hit_test_extended_resize_borders =>
-                        {
-                            HitTestArea::Caption
-                        }
-                        ExtentHitTest::Extent(Border::TopLeft)
-                            if options.hit_test_extended_caption
-                                && options.hit_test_extended_resize_borders =>
-                        {
-                            HitTestArea::Resize(Border::Left)
-                        }
-                        ExtentHitTest::Extent(Border::TopRight)
-                            if options.hit_test_extended_caption
-                                && options.hit_test_extended_resize_borders =>
-                        {
-                            HitTestArea::Resize(Border::Right)
-                        }
-                        ExtentHitTest::Extent(border)
-                            if options.hit_test_extended_resize_borders =>
-                        {
-                            HitTestArea::Resize(border)
-                        }
-                        _ => HitTestArea::Client,
-                    }
-                }
-            }
-        }
-    }
-}
-
-unsafe fn is_dwm_enabled() -> bool {
-    let mut f_dwm_enabled = FALSE;
-    let dwm_enabled_result = DwmIsCompositionEnabled(&mut f_dwm_enabled);
-
-    f_dwm_enabled == TRUE && dwm_enabled_result.is_ok()
-}
-
-#[repr(C)]
-struct NCCALCSIZE_PARAMS {
-    pub rgrc: [RECT; 3],
-    pub lppos: *mut WINDOWPOS_abi,
-}
-
-unsafe fn window_frame_borders(with_caption: bool) -> RECT {
-    let style_flags = if with_caption {
-        WS_OVERLAPPEDWINDOW
-    } else {
-        WS_OVERLAPPEDWINDOW & !WS_CAPTION
-    };
-
-    let mut rect = RECT::default();
-    AdjustWindowRectEx(&mut rect, style_flags, false.into(), 0);
-    rect
 }
