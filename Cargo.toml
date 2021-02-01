@@ -18,3 +18,4 @@ windows = "0.2.1"
 [dev-dependencies]
 winit = "0.24"
 minifb = "0.19"
+sdl2 = "0.34"
