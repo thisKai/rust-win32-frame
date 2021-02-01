@@ -18,7 +18,7 @@ use {
             AdjustWindowRectEx, GetWindowRect, SetWindowPos, WINDOWPOS_abi, HWND, LPARAM, WPARAM,
         },
     },
-    dark_mode::{dark_dwm_decorations, Theme},
+    dark_mode::dark_dwm_decorations,
     hit_test::{
         extent_hit_test, non_client_hit_test, Border, ExtentHitTest, HitTest, WindowMetrics,
     },
@@ -26,6 +26,7 @@ use {
     std::ops::{Deref, DerefMut},
 };
 pub use {
+    dark_mode::Theme,
     hit_test::{HitTestArea, Point, Size},
     options::*,
 };
