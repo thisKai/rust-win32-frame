@@ -64,6 +64,9 @@ impl WindowCustomization {
         self.update();
         Ok(())
     }
+    pub fn edit(&mut self) -> WindowFrameMut {
+        WindowFrameMut { customization: self }
+    }
     unsafe fn update(&self) {
         if let Some(theme) = &self.options.theme {
             dark_dwm_decorations(self.handle, matches!(theme, Theme::Dark));
@@ -102,9 +105,8 @@ impl Drop for WindowCustomization {
 }
 
 pub struct CustomizedWindow<W: HasRawWindowHandle> {
-    subclass_id: usize,
     window: W,
-    options: Box<WindowFrame>,
+    customization: WindowCustomization,
 }
 impl<W: HasRawWindowHandle> CustomizedWindow<W> {
     pub fn wrap(window: W, options: WindowFrame) -> windows::Result<Self> {
@@ -115,61 +117,18 @@ impl<W: HasRawWindowHandle> CustomizedWindow<W> {
         options: WindowFrame,
         subclass_id: usize,
     ) -> windows::Result<Self> {
-        let h_wnd = windows_window_handle(&window);
+        let customization = WindowCustomization::with_id(&window, options, subclass_id)?;
         let subclassed = Self {
-            subclass_id,
             window,
-            options: Box::new(options),
+            customization,
         };
-        let options_ptr = &*subclassed.options as *const WindowFrame;
-        unsafe {
-            SetWindowSubclass(
-                h_wnd,
-                Some(subclass_procedure),
-                subclass_id,
-                options_ptr as usize,
-            )
-            .ok()?;
-            subclassed.update();
-        }
         Ok(subclassed)
     }
     pub fn unwrap(self) -> windows::Result<W> {
-        let h_wnd = windows_window_handle(&self.window);
-        unsafe {
-            RemoveWindowSubclass(h_wnd, Some(subclass_procedure), self.subclass_id).ok()?;
-        }
         Ok(self.window)
     }
-    pub fn edit_custom_frame(&mut self) -> WindowFrameMut<W> {
-        WindowFrameMut { window: self }
-    }
-    unsafe fn update(&self) {
-        let h_wnd = windows_window_handle(&self.window);
-
-        if let Some(theme) = &self.options.theme {
-            dark_dwm_decorations(h_wnd, matches!(theme, Theme::Dark));
-        }
-
-        let mut rect = RECT::default();
-        GetWindowRect(h_wnd, &mut rect);
-
-        // Inform application of the frame change.
-        let width = rect.right - rect.left;
-        let height = rect.bottom - rect.top;
-
-        let p_mar_inset = self.options.extend_frame.to_win32();
-
-        SetWindowPos(
-            h_wnd,
-            HWND(0),
-            rect.left,
-            rect.top,
-            width,
-            height,
-            SWP_FRAMECHANGED as _,
-        );
-        DwmExtendFrameIntoClientArea(h_wnd, &p_mar_inset);
+    pub fn edit_custom_frame(&mut self) -> WindowFrameMut {
+        self.customization.edit()
     }
 }
 impl<W: HasRawWindowHandle> Deref for CustomizedWindow<W> {
@@ -185,25 +144,25 @@ impl<W: HasRawWindowHandle> DerefMut for CustomizedWindow<W> {
     }
 }
 
-pub struct WindowFrameMut<'a, W: HasRawWindowHandle> {
-    window: &'a mut CustomizedWindow<W>,
+pub struct WindowFrameMut<'a> {
+    customization: &'a mut WindowCustomization,
 }
-impl<'a, W: HasRawWindowHandle> Deref for WindowFrameMut<'a, W> {
+impl<'a> Deref for WindowFrameMut<'a> {
     type Target = WindowFrame;
 
     fn deref(&self) -> &Self::Target {
-        &*self.window.options
+        &*self.customization.options
     }
 }
-impl<'a, W: HasRawWindowHandle> DerefMut for WindowFrameMut<'a, W> {
+impl<'a> DerefMut for WindowFrameMut<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut *self.window.options
+        &mut *self.customization.options
     }
 }
-impl<'a, W: HasRawWindowHandle> Drop for WindowFrameMut<'a, W> {
+impl<'a> Drop for WindowFrameMut<'a> {
     fn drop(&mut self) {
         unsafe {
-            self.window.update();
+            self.customization.update();
         }
     }
 }
