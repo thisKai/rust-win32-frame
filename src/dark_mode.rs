@@ -1,8 +1,10 @@
 use {
-    crate::bindings::windows::win32::{system_services::NTSTATUS, windows_and_messaging::HWND},
+    crate::bindings::windows::win32::{
+        system_services::{BOOL, NTSTATUS},
+        windows_and_messaging::HWND,
+    },
     once_cell::sync::Lazy,
     std::{ffi::c_void, mem},
-    windows::BOOL,
     windows_dll::dll,
 };
 
@@ -94,7 +96,7 @@ pub fn dark_dwm_decorations(hwnd: HWND, enable_dark_mode: bool) -> bool {
                 cbData: mem::size_of::<BOOL>(),
             };
 
-            SetWindowCompositionAttribute(hwnd, &mut data).is_ok()
+            SetWindowCompositionAttribute(hwnd, &mut data).as_bool()
         }
     } else {
         false

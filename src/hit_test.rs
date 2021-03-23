@@ -1,11 +1,11 @@
 use crate::{
     bindings::windows::win32::{
         display_devices::RECT,
-        system_services::{
-            HTBOTTOM, HTBOTTOMLEFT, HTBOTTOMRIGHT, HTCAPTION, HTLEFT, HTNOWHERE, HTRIGHT, HTTOP,
-            HTTOPLEFT, HTTOPRIGHT, LRESULT,
+        system_services::LRESULT,
+        windows_and_messaging::{
+            GetWindowRect, HTBOTTOM, HTBOTTOMLEFT, HTBOTTOMRIGHT, HTCAPTION, HTLEFT, HTNOWHERE,
+            HTRIGHT, HTTOP, HTTOPLEFT, HTTOPRIGHT, HWND, LPARAM,
         },
-        windows_and_messaging::{GetWindowRect, HWND, LPARAM},
     },
     window_frame_borders, WindowFrame,
 };
@@ -41,9 +41,9 @@ pub enum HitTestArea {
 impl HitTestArea {
     pub(crate) fn l_result(&self) -> LRESULT {
         match self {
-            Self::Caption => LRESULT(HTCAPTION),
+            Self::Caption => LRESULT(HTCAPTION as _),
             Self::Resize(border) => border.l_result(),
-            Self::Client => LRESULT(HTNOWHERE),
+            Self::Client => LRESULT(HTNOWHERE as _),
         }
     }
 }
@@ -55,7 +55,7 @@ pub(crate) enum ExtentHitTest {
 }
 
 #[derive(Debug, Clone, Copy)]
-#[repr(i32)]
+#[repr(u32)]
 pub enum Border {
     TopLeft = HTTOPLEFT,
     Top = HTTOP,

@@ -1,8 +1,8 @@
 use crate::{
     bindings::windows::win32::controls::MARGINS,
+    dark_mode::Theme,
     hit_test::{HitTestArea, Point, Size},
     window_frame_borders,
-    dark_mode::Theme,
 };
 
 #[derive(Default)]

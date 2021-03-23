@@ -12,8 +12,7 @@ use {
         display_devices::RECT,
         dwm::DwmExtendFrameIntoClientArea,
         shell::{RemoveWindowSubclass, SetWindowSubclass},
-        system_services::SWP_FRAMECHANGED,
-        windows_and_messaging::{GetWindowRect, SetWindowPos, HWND},
+        windows_and_messaging::{GetWindowRect, SetWindowPos, SetWindowPos_uFlags, HWND},
     },
     dark_mode::dark_dwm_decorations,
     raw_window_handle::HasRawWindowHandle,
@@ -96,7 +95,7 @@ impl WindowCustomization {
             rect.top,
             width,
             height,
-            SWP_FRAMECHANGED as _,
+            SetWindowPos_uFlags::SWP_FRAMECHANGED,
         );
         DwmExtendFrameIntoClientArea(self.handle, &p_mar_inset);
     }

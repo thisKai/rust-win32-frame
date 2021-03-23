@@ -20,7 +20,7 @@ fn main() -> windows::Result<()> {
             intercept_client_area_hit_test: Some(Box::new(|_pos, _size| {
                 Some(HitTestArea::Caption)
             })),
-            hit_test_caption_buttons: false,
+            // hit_test_caption_buttons: false,
             ..WindowFrame::custom_caption()
         })?;
 

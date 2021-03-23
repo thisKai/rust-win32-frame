@@ -2,12 +2,14 @@ use crate::{
     bindings::windows::win32::{
         dwm::{DwmDefWindowProc, DwmExtendFrameIntoClientArea},
         shell::DefSubclassProc,
-        system_services::{LRESULT, TRUE, WM_ACTIVATE, WM_NCCALCSIZE, WM_NCHITTEST},
-        windows_and_messaging::{HWND, LPARAM, WPARAM},
+        system_services::{LRESULT, TRUE},
+        windows_and_messaging::{
+            HWND, LPARAM, NCCALCSIZE_PARAMS, WM_ACTIVATE, WM_NCCALCSIZE, WM_NCHITTEST, WPARAM,
+        },
     },
     hit_test::{non_client_hit_test, transform_hit_test, HitTestArea, Point, WindowMetrics},
     options::WindowFrame,
-    util::{is_dwm_enabled, NCCALCSIZE_PARAMS},
+    util::is_dwm_enabled,
 };
 
 pub(crate) extern "system" fn subclass_procedure(
@@ -22,25 +24,23 @@ pub(crate) extern "system" fn subclass_procedure(
         if is_dwm_enabled() {
             let options = &*(dw_ref_data as *const WindowFrame);
 
-            let msg = u_msg as i32;
-
             let (dwm_result, dwm_handled) = {
                 if options.hit_test_caption_buttons {
                     let mut result = LRESULT(0);
                     let handled =
-                        DwmDefWindowProc(h_wnd, u_msg, w_param, l_param, &mut result).is_ok();
+                        DwmDefWindowProc(h_wnd, u_msg, w_param, l_param, &mut result).as_bool();
                     (result, handled)
                 } else {
                     (LRESULT(0), false)
                 }
             };
 
-            if msg == WM_ACTIVATE {
+            if u_msg == WM_ACTIVATE {
                 // Extend the frame into the client area.
                 let p_mar_inset = options.extend_frame.to_win32();
                 DwmExtendFrameIntoClientArea(h_wnd, &p_mar_inset);
             }
-            if msg == WM_NCCALCSIZE && w_param == WPARAM(TRUE as _) {
+            if u_msg == WM_NCCALCSIZE && w_param == WPARAM(TRUE as _) {
                 let WindowFrame {
                     extend_client_area: adjust_client_area,
                     ..
@@ -54,7 +54,7 @@ pub(crate) extern "system" fn subclass_procedure(
                 pncsp.rgrc[0].right += adjust_client_area.right;
                 pncsp.rgrc[0].bottom += adjust_client_area.bottom;
             }
-            if msg == WM_NCHITTEST && !dwm_handled {
+            if u_msg == WM_NCHITTEST && !dwm_handled {
                 let global_position = Point::from_l_param(l_param);
 
                 let metrics = WindowMetrics::new(h_wnd);

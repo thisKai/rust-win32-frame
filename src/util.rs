@@ -2,8 +2,8 @@ use {
     crate::bindings::windows::win32::{
         display_devices::RECT,
         dwm::DwmIsCompositionEnabled,
-        system_services::{FALSE, TRUE, WS_CAPTION, WS_OVERLAPPEDWINDOW},
-        windows_and_messaging::{AdjustWindowRectEx, WINDOWPOS_abi, HWND},
+        system_services::{BOOL, FALSE},
+        windows_and_messaging::{AdjustWindowRectEx, HWND, WINDOWS_STYLE},
     },
     raw_window_handle::{HasRawWindowHandle, RawWindowHandle},
 };
@@ -19,26 +19,28 @@ pub(crate) fn windows_window_handle<W: HasRawWindowHandle>(window: &W) -> HWND {
 }
 
 pub(crate) unsafe fn is_dwm_enabled() -> bool {
-    let mut f_dwm_enabled = FALSE;
+    let mut f_dwm_enabled = BOOL(FALSE);
     let dwm_enabled_result = DwmIsCompositionEnabled(&mut f_dwm_enabled);
 
-    f_dwm_enabled == TRUE && dwm_enabled_result.is_ok()
-}
-
-#[repr(C)]
-pub(crate) struct NCCALCSIZE_PARAMS {
-    pub rgrc: [RECT; 3],
-    pub lppos: *mut WINDOWPOS_abi,
+    f_dwm_enabled.as_bool() && dwm_enabled_result.is_ok()
 }
 
 pub(crate) unsafe fn window_frame_borders(with_caption: bool) -> RECT {
     let style_flags = if with_caption {
-        WS_OVERLAPPEDWINDOW
+        WINDOWS_STYLE::WS_OVERLAPPEDWINDOW
     } else {
-        WS_OVERLAPPEDWINDOW & !WS_CAPTION
+        WINDOWS_STYLE::WS_OVERLAPPEDWINDOW & !WINDOWS_STYLE::WS_CAPTION
     };
 
     let mut rect = RECT::default();
-    AdjustWindowRectEx(&mut rect, style_flags, false.into(), 0);
+    AdjustWindowRectEx(&mut rect, style_flags.0, false, 0);
     rect
+}
+
+impl std::ops::Not for WINDOWS_STYLE {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        Self(!self.0)
+    }
 }
